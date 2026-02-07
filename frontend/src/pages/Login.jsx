@@ -6,7 +6,7 @@ import { Stethoscope, Mail, Lock, Activity } from "lucide-react";
 
 export default function Login() {
   const [searchParams] = useSearchParams();
-  const isAdmin = searchParams.get("admin") === "1";
+  const isDoctor = searchParams.get("admin") === "1";
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -25,10 +25,10 @@ export default function Login() {
       navigate("/dashboard", { replace: true });
       return;
     }
-    setError("Invalid email/username or password. For testing use username and password: 12345");
+    setError(isDoctor ? "Invalid credentials. For testing use username ABC and password ABC." : "Invalid credentials. For testing use username 123 and password 123.");
   };
 
-  const title = isAdmin ? "Admin Login" : "Sign in to ParaTrain";
+  const title = isDoctor ? "Doctor Login" : "Patient Login";
 
   return (
     <AuthLayout>
@@ -42,7 +42,7 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="relative bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="relative bg-white rounded-2xl shadow-2xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
           {/* Top accent strip */}
           <div className="h-1.5 bg-gradient-to-r from-para-teal via-para-teal-light to-para-teal" />
 
@@ -56,7 +56,7 @@ export default function Login() {
                 {title}
               </h2>
               <p className="text-sm text-gray-500 mt-1.5 text-center">
-                {isAdmin ? "Access the admin dashboard" : "Continue your medical training journey"}
+                {isDoctor ? "Access the doctor dashboard" : "Continue your medical training journey"}
               </p>
             </div>
 
@@ -102,14 +102,12 @@ export default function Login() {
               </button>
             </form>
 
-            {!isAdmin && (
-              <p className="text-center text-gray-600 mt-6 text-sm">
-                Don&apos;t have an account?{" "}
-                <Link to="/signup" className="text-para-teal font-semibold hover:underline focus:outline-none focus:ring-2 focus:ring-para-teal/30 rounded">
-                  Create account
-                </Link>
-              </p>
-            )}
+<p className="text-center text-gray-600 mt-6 text-sm">
+              Don&apos;t have an account?{" "}
+              <Link to={isDoctor ? "/signup?doctor=1" : "/signup"} className="text-para-teal font-semibold hover:underline focus:outline-none focus:ring-2 focus:ring-para-teal/30 rounded">
+                Create account
+              </Link>
+            </p>
           </div>
         </div>
 

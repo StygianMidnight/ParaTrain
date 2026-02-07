@@ -1,6 +1,6 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { loadProgress, saveProgress, ORDER, SIMPLE_STORAGE_KEY } from "./SimpleDashboard";
+import { loadProgress, saveProgress, ORDER } from "../utils/progressStorage";
 
 const MODE_LABELS = { arms: "Arms", wrists: "Wrists", legs: "Legs", fullbody: "Full Body" };
 

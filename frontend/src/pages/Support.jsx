@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
+import { useTheme } from "../context/ThemeContext";
 
 const FAQ_ITEMS = [
   {
@@ -47,8 +48,13 @@ const FAQ_ITEMS = [
 
 export default function Support() {
   const navigate = useNavigate();
+  const { dark } = useTheme();
   const [search, setSearch] = useState("");
   const [openIndex, setOpenIndex] = useState(0);
+  const bg = dark ? "bg-gray-900" : "bg-para-bg";
+  const card = dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200";
+  const text = dark ? "text-gray-100" : "text-gray-900";
+  const muted = dark ? "text-gray-400" : "text-gray-500";
 
   const filtered = useMemo(() => {
     if (!search.trim()) return FAQ_ITEMS;
@@ -62,16 +68,16 @@ export default function Support() {
   const effectiveOpen = openIndex >= filtered.length ? -1 : openIndex;
 
   return (
-    <div className="min-h-screen bg-para-bg">
+    <div className={`min-h-screen ${bg} transition-colors`}>
       {/* Back button - above banner */}
-      <div className="bg-para-bg border-b border-gray-200 px-6 py-3">
+      <div className={`${bg} border-b ${dark ? "border-gray-700" : "border-gray-200"} px-6 py-3`}>
         <div className="max-w-3xl mx-auto">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium text-sm"
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border font-medium text-sm transition ${dark ? "border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
           >
-            Back
+            <ArrowLeft className="w-4 h-4" /> Back
           </button>
         </div>
       </div>
@@ -99,8 +105,8 @@ export default function Support() {
       <div className="max-w-3xl mx-auto px-6 py-10">
         <div className="flex flex-col md:flex-row md:gap-12">
           <div className="md:w-72 flex-shrink-0 mb-8 md:mb-0">
-            <h2 className="text-lg font-bold text-gray-900">General FAQs</h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <h2 className={`text-lg font-bold ${text}`}>General FAQs</h2>
+            <p className={`text-sm ${muted} mt-1`}>
               Everything you need to know about the app and your treatment. Can&apos;t find an answer?{" "}
               <button
                 type="button"
@@ -114,23 +120,23 @@ export default function Support() {
           </div>
           <div className="flex-1">
             {filtered.length === 0 ? (
-              <p className="text-gray-500">No questions match your search.</p>
+              <p className={muted}>No questions match your search.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-3">
                 {filtered.map((item, index) => {
                   const isOpen = effectiveOpen === index;
                   return (
                     <li
                       key={index}
-                      className="bg-white rounded-xl border border-gray-200 overflow-hidden"
+                      className={`${card} rounded-xl border overflow-hidden shadow-sm`}
                     >
                       <button
                         type="button"
                         onClick={() => setOpenIndex(isOpen ? -1 : index)}
                         aria-expanded={isOpen}
-                        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-gray-50/80 transition"
+                        className={`w-full flex items-center justify-between gap-4 px-5 py-4 text-left transition ${dark ? "hover:bg-gray-700/50" : "hover:bg-gray-50/80"}`}
                       >
-                        <span className="font-medium text-gray-900">{item.q}</span>
+                        <span className={`font-medium ${text}`}>{item.q}</span>
                         {isOpen ? (
                           <ChevronUp className="w-5 h-5 text-gray-400 flex-shrink-0" />
                         ) : (
@@ -138,8 +144,8 @@ export default function Support() {
                         )}
                       </button>
                       {isOpen && (
-                        <div className="px-5 pb-5 pt-0">
-                          <p className="text-gray-600 text-sm leading-relaxed">{item.a}</p>
+                        <div className={`px-5 pb-5 pt-0 ${dark ? "bg-gray-800/50" : ""}`}>
+                          <p className={`text-sm leading-relaxed ${dark ? "text-gray-300" : "text-gray-600"}`}>{item.a}</p>
                         </div>
                       )}
                     </li>
