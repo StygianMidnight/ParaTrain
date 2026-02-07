@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Trophy,
@@ -11,36 +11,60 @@ import {
   Menu,
 } from "lucide-react";
 
-// COMPONENTS
 import Sidebar from "../components/Sidebar";
+import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
+import { loadProgress } from "../utils/progressStorage";
+import { ORDER } from "../utils/progressStorage";
 
-// IMAGES
 import armsImg from "../assets/arms.png";
 import wristsImg from "../assets/wrists.png";
 import legsImg from "../assets/legs.png";
 import fullBodyImg from "../assets/fullbody.png";
 
+const SIMPLE_ROUTES = {
+  arms: "/dashboard/simple/arms",
+  wrists: "/dashboard/simple/wrists",
+  legs: "/dashboard/simple/legs",
+  fullbody: "/dashboard/simple/fullbody",
+};
+
 function Dashboard() {
-  const navigate = useNavigate(); // ✅ for routing
-
-  // -------------------------------
-  // SIDEBAR STATE (CONTROLLED HERE)
-  // -------------------------------
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { dark } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [progress, setProgress] = useState(loadProgress());
 
-  // -------------------------------
-  // STATS DATA
-  // -------------------------------
+  const refreshProgress = () => setProgress(loadProgress());
+
+  useEffect(() => {
+    refreshProgress();
+    const onFocus = () => refreshProgress();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
+  const sessionsCompleted = progress.sessionsCompleted ?? 0;
+  const nextIndex = Math.min(sessionsCompleted, ORDER.length - 1);
+  const nextMode = ORDER[nextIndex];
+  const nextSessionRoute = SIMPLE_ROUTES[nextMode] ?? "/dashboard/simple/arms";
+
+  const handleStartNewSession = () => {
+    navigate(nextSessionRoute);
+  };
+
+  const trainingTimeDisplay = progress.trainingTimeMinutes >= 60
+    ? `${(progress.trainingTimeMinutes / 60).toFixed(1)}h`
+    : `${progress.trainingTimeMinutes}m`;
+
   const stats = [
-    { label: "Sessions Completed", value: "15", change: "+12%", icon: <Trophy className="text-blue-500" /> },
-    { label: "Training Time", value: "23.5h", change: "+8%", icon: <Clock className="text-purple-500" /> },
-    { label: "Accuracy Score", value: "92%", change: "+5%", icon: <Star className="text-green-500" /> },
-    { label: "Day Streak", value: "15", change: "7 days", icon: <Flame className="text-orange-500" /> },
+    { label: "Sessions Completed", value: String(progress.totalSessions ?? 0), icon: Trophy, iconClass: "text-blue-500", bgClass: "bg-blue-500/10" },
+    { label: "Training Time", value: trainingTimeDisplay, icon: Clock, iconClass: "text-purple-500", bgClass: "bg-purple-500/10" },
+    { label: "Accuracy Score", value: `${progress.accuracy ?? 0}%`, icon: Star, iconClass: "text-amber-500", bgClass: "bg-amber-500/10" },
+    { label: "Day Streak", value: String(progress.streak ?? 0), icon: Flame, iconClass: "text-orange-500", bgClass: "bg-orange-500/10" },
   ];
 
-  // -------------------------------
-  // SIMULATIONS DATA
-  // -------------------------------
   const simulations = [
     { title: "Arms", desc: "Practice arm examinations and procedures", image: armsImg, rating: 3, modules: "12 modules", route: "/dashboard/arms" },
     { title: "Legs", desc: "Master lower limb examination techniques", image: legsImg, rating: 3, modules: "10 modules", route: "/dashboard/legs" },
@@ -48,151 +72,185 @@ function Dashboard() {
     { title: "Full Body", desc: "Comprehensive full body examination", image: fullBodyImg, rating: 5, modules: "20 modules", route: "/dashboard/fullbody" },
   ];
 
+  const bgMain = dark ? "bg-gray-900" : "bg-gradient-to-br from-slate-50 via-para-bg to-para-teal/5";
+  const cardBg = dark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100";
+  const textPrimary = dark ? "text-gray-100" : "text-gray-900";
+  const textMuted = dark ? "text-gray-400" : "text-gray-500";
+
   return (
-    <div className="min-h-screen bg-[#F7FAFC] relative overflow-hidden">
-      {/* SIDEBAR */}
+    <div className={`min-h-screen ${bgMain} relative overflow-hidden transition-colors`}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* MAIN CONTENT */}
-      <div className="p-8">
-        {/* HEADER */}
-        <div className="flex justify-between items-center mb-10">
+      <div className="p-6 md:p-8">
+        {/* Header */}
+        <div className="flex flex-wrap justify-between items-start gap-4 mb-8">
           <div className="flex items-start gap-4">
-            <Menu className="cursor-pointer mt-1" onClick={() => setSidebarOpen(true)} />
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className={`p-2 rounded-xl ${dark ? "hover:bg-gray-700 text-gray-300" : "hover:bg-white/80 text-gray-600"} transition shadow-sm`}
+            >
+              <Menu className="w-6 h-6" />
+            </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Welcome back, Chingga!</h1>
-              <p className="text-gray-500 mt-1">
+              <h1 className={`text-3xl md:text-4xl font-bold ${textPrimary} tracking-tight`}>
+                Welcome back, {user}!
+              </h1>
+              <p className={`${textMuted} mt-1 text-sm md:text-base`}>
                 Continue your medical training journey with our advanced simulations
               </p>
             </div>
           </div>
 
-          <button className="flex items-center gap-2 bg-[#00ACD8] text-white px-6 py-3 rounded-xl shadow hover:opacity-90">
-            <Play size={18} /> Start New Session
+          <button
+            type="button"
+            onClick={handleStartNewSession}
+            className="flex items-center gap-2 bg-para-teal hover:bg-para-teal-dark text-white px-6 py-3.5 rounded-xl font-semibold shadow-lg shadow-para-teal/25 hover:shadow-xl transition active:scale-[0.98]"
+          >
+            <Play size={20} /> Start New Session
           </button>
         </div>
 
-        {/* STATS */}
-        <div className="grid grid-cols-4 gap-6 mb-12">
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
           {stats.map((s, i) => (
-            <div key={i} className="bg-white rounded-xl border p-6 shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">{s.icon}</div>
-                <span className="text-sm text-green-500 font-medium">{s.change}</span>
+            <div
+              key={i}
+              className={`rounded-2xl border ${cardBg} p-5 md:p-6 shadow-sm hover:shadow-md transition ${dark ? "hover:bg-gray-700/50" : ""}`}
+            >
+              <div className="flex justify-between items-center mb-3">
+                <div className={`w-12 h-12 rounded-xl ${s.bgClass} flex items-center justify-center`}>
+                  <s.icon className={`w-6 h-6 ${s.iconClass}`} />
+                </div>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{s.value}</p>
-              <p className="text-sm text-gray-500 mt-1">{s.label}</p>
+              <p className={`text-2xl md:text-3xl font-bold ${textPrimary}`}>{s.value}</p>
+              <p className={`text-sm ${textMuted} mt-0.5`}>{s.label}</p>
             </div>
           ))}
         </div>
 
-        {/* MAIN GRID */}
-        <div className="grid grid-cols-12 gap-8">
-          {/* LEFT */}
-          <div className="col-span-8">
-            {/* SIMULATIONS */}
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Simulation Modes</h2>
-              <span
-                className="text-[#00ACD8] text-sm cursor-pointer hover:underline"
-                onClick={() => navigate("/dashboard/simulation-modes")}
-              >
-                View All →
-              </span>
-            </div>
-
-            <div className="grid grid-cols-4 gap-6 mb-10">
-              {simulations.map((sim, i) => (
-                <div key={i} className="bg-white rounded-xl border overflow-hidden shadow-sm hover:shadow-md transition">
-                  <img src={sim.image} alt={sim.title} className="h-32 w-full object-cover" />
-
-                  <div className="p-4">
-                    <h3 className="font-semibold mb-1">{sim.title}</h3>
-                    <p className="text-sm text-gray-500 mb-3">{sim.desc}</p>
-
-                    <div className="flex items-center gap-1 mb-3">
-                      {Array.from({ length: 5 }).map((_, idx) => (
-                        <Star
-                          key={idx}
-                          size={14}
-                          className={idx < sim.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}
-                        />
-                      ))}
-                      <span className="text-xs text-gray-400 ml-2">{sim.modules}</span>
-                    </div>
-
-                    {/* ✅ Start Training Navigation */}
-                    <button
-                      onClick={() => navigate(sim.route)}
-                      className="w-full bg-[#00ACD8] text-white py-2 rounded-lg text-sm"
-                    >
-                      Start Training
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* AI REPORTS */}
-            <div className="bg-white rounded-xl border p-6 shadow-sm">
+        {/* Main grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8">
+          <div className="xl:col-span-8 space-y-8">
+            {/* Simulation Modes */}
+            <div>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="font-semibold text-lg">AI Performance Reports</h2>
-                <span className="text-[#00ACD8] text-sm cursor-pointer">View All</span>
+                <h2 className={`text-xl font-semibold ${textPrimary}`}>Simulation Modes</h2>
+                <button
+                  type="button"
+                  onClick={() => navigate("/dashboard/simulation-modes")}
+                  className="text-para-teal text-sm font-medium hover:underline"
+                >
+                  View All →
+                </button>
               </div>
 
-              {[
-                { title: "Arms Simulation Report", time: "Generated 2 hours ago", score: "95% Accuracy", color: "text-green-500" },
-                { title: "Full Body Assessment", time: "Generated yesterday", score: "88% Accuracy", color: "text-green-500" },
-                { title: "Hands Diagnostic Report", time: "Generated 3 days ago", score: "78% Accuracy", color: "text-orange-500" },
-              ].map((r, i) => (
-                <div key={i} className="flex justify-between items-center bg-gray-50 rounded-lg p-4 mb-3">
-                  <div className="flex gap-3 items-center">
-                    <div className="w-10 h-10 rounded-lg bg-[#00ACD8]/10 flex items-center justify-center">
-                      <FileText className="text-[#00ACD8]" size={18} />
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
+                {simulations.map((sim, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-2xl border overflow-hidden shadow-sm hover:shadow-lg transition ${cardBg} group`}
+                  >
+                    <div className="aspect-[4/3] overflow-hidden">
+                      <img src={sim.image} alt={sim.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
                     </div>
-                    <div>
-                      <p className="font-medium">{r.title}</p>
-                      <p className="text-xs text-gray-500">{r.time}</p>
+                    <div className="p-4">
+                      <h3 className={`font-semibold mb-1 ${textPrimary}`}>{sim.title}</h3>
+                      <p className={`text-sm ${textMuted} mb-3 line-clamp-2`}>{sim.desc}</p>
+                      <div className="flex items-center gap-1 mb-3">
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <Star
+                            key={idx}
+                            size={14}
+                            className={idx < sim.rating ? "text-amber-400 fill-amber-400" : "text-gray-300 dark:text-gray-600"}
+                          />
+                        ))}
+                        <span className={`text-xs ${textMuted} ml-2`}>{sim.modules}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate(sim.route)}
+                        className="w-full bg-para-teal hover:bg-para-teal-dark text-white py-2.5 rounded-xl text-sm font-medium transition"
+                      >
+                        Start Training
+                      </button>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
 
-                  <div className="flex items-center gap-4">
+            {/* AI Reports */}
+            <div className={`rounded-2xl border p-6 ${cardBg} shadow-sm`}>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className={`font-semibold text-lg ${textPrimary}`}>AI Performance Reports</h2>
+                <button
+                  type="button"
+                  onClick={() => navigate("/dashboard/reports")}
+                  className="text-para-teal text-sm font-medium hover:underline"
+                >
+                  View All
+                </button>
+              </div>
+              {[
+                { title: "Arms Simulation Report", time: "Generated 2 hours ago", score: "95%", color: "text-green-500" },
+                { title: "Full Body Assessment", time: "Generated yesterday", score: "88%", color: "text-green-500" },
+                { title: "Hands Diagnostic Report", time: "Generated 3 days ago", score: "78%", color: "text-amber-500" },
+              ].map((r, i) => (
+                <div
+                  key={i}
+                  className={`flex justify-between items-center rounded-xl p-4 mb-3 last:mb-0 ${dark ? "bg-gray-700/50" : "bg-gray-50/80"} hover:bg-para-teal/5 transition`}
+                >
+                  <div className="flex gap-3 items-center">
+                    <div className="w-10 h-10 rounded-xl bg-para-teal/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="text-para-teal w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className={`font-medium ${textPrimary}`}>{r.title}</p>
+                      <p className={`text-xs ${textMuted}`}>{r.time}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
                     <span className={`text-sm font-semibold ${r.color}`}>{r.score}</span>
-                    <button className="text-sm bg-white border px-4 py-1 rounded-lg">View</button>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/dashboard/reports")}
+                      className="text-sm border border-para-teal/50 text-para-teal px-4 py-1.5 rounded-lg hover:bg-para-teal/10 transition"
+                    >
+                      View
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* RIGHT */}
-          <div className="col-span-4">
-            <div className="bg-gradient-to-b from-[#2563EB] to-[#3B82F6] rounded-xl p-6 text-white shadow-lg">
+          {/* Right: Pro card */}
+          <div className="xl:col-span-4">
+            <div className="rounded-2xl bg-gradient-to-b from-indigo-600 to-indigo-700 p-6 text-white shadow-xl sticky top-6">
               <div className="flex items-center gap-2 mb-4">
-                <Crown className="text-yellow-300" />
-                <span className="text-sm bg-white/20 px-2 py-1 rounded">PRO MODE</span>
+                <Crown className="w-5 h-5 text-amber-300" />
+                <span className="text-xs font-semibold bg-white/20 px-2.5 py-1 rounded-full uppercase tracking-wider">Pro</span>
               </div>
-
-              <h3 className="text-2xl font-bold mb-2">Unlock Premium Features</h3>
-              <p className="text-sm opacity-90 mb-6">
-                Get access to live doctor consultations and advanced training simulations
+              <h3 className="text-xl font-bold mb-2">Unlock Premium</h3>
+              <p className="text-sm text-white/90 mb-5">
+                Live doctor consultations and advanced training simulations
               </p>
-
-              <ul className="text-sm space-y-3 mb-6">
-                <li>✔ Real-time doctor consultations</li>
-                <li>✔ Advanced training simulations</li>
-                <li>✔ Certified AI report generation</li>
-                <li>✔ Unlimited simulation access</li>
+              <ul className="text-sm space-y-2.5 mb-6">
+                {["Real-time doctor consultations", "Advanced simulations", "Certified AI reports", "Unlimited access"].map((item, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className="text-green-300">✔</span> {item}
+                  </li>
+                ))}
               </ul>
-
-              <div className="bg-white text-gray-900 rounded-lg p-4 mb-4 text-center">
+              <div className="bg-white/15 rounded-xl p-4 mb-4 text-center backdrop-blur">
                 <p className="text-3xl font-bold">$49</p>
-                <p className="text-xs text-gray-500">per month</p>
+                <p className="text-xs text-white/80">per month</p>
               </div>
-
-              <button className="w-full bg-white text-[#2563EB] font-semibold py-2 rounded-lg">Upgrade to Pro</button>
-
-              <p className="text-xs text-center mt-3 opacity-80">7-day free trial • No credit card required</p>
+              <button type="button" className="w-full bg-white text-indigo-600 font-semibold py-3 rounded-xl hover:bg-white/95 transition">
+                Upgrade to Pro
+              </button>
+              <p className="text-xs text-center mt-3 text-white/70">7-day free trial · No card required</p>
             </div>
           </div>
         </div>

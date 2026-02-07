@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 
 export default function Signup() {
+  const [searchParams] = useSearchParams();
+  const isDoctor = searchParams.get("doctor") === "1";
   const [name, setName] = useState("");
   const [gmail, setGmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -17,18 +19,19 @@ export default function Signup() {
       setMessage("Passwords do not match.");
       return;
     }
-    // Placeholder for backend OTP flow
-    setMessage("OTP flow will be connected when backend is ready. You can log in with 12345 / 12345 for now.");
+    setMessage(isDoctor
+      ? "OTP flow will be connected when backend is ready. You can log in with ABC / ABC for now."
+      : "OTP flow will be connected when backend is ready. You can log in with 123 / 123 for now.");
   };
 
   return (
     <AuthLayout showNav={true}>
       <div className="w-full max-w-md flex flex-col">
-        <div className="relative bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="relative bg-white rounded-2xl shadow-2xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
           <div className="h-1.5 bg-gradient-to-r from-para-teal via-para-teal-light to-para-teal" />
           <div className="p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">
-            Create a New Account
+            {isDoctor ? "Create Doctor Account" : "Create a New Account"}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
@@ -80,7 +83,7 @@ export default function Signup() {
           </form>
           <p className="text-gray-600 mt-5 text-sm">
             Already have an account?{" "}
-            <Link to="/login" className="text-para-teal font-medium underline">
+            <Link to={isDoctor ? "/login?admin=1" : "/login"} className="text-para-teal font-medium underline">
               Login here
             </Link>
           </p>
