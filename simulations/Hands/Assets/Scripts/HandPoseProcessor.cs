@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI; // required for UI.Text
+using System.Collections.Generic;
 
 public enum HandPoseType
 {
@@ -15,8 +16,9 @@ public class HandPoseProcessor : MonoBehaviour
 
     private Vector3[] worldLandmarks = new Vector3[21];
 
-    // ✅ Detected gesture
     public HandPoseType CurrentGesture { get; private set; } = HandPoseType.None;
+    private float sendInterval = 10f; // seconds
+    private float timeSinceLastSend = 0f;
 
     [Header("Reference Poses (Absolute captured coordinates)")]
     public Vector3[] peacePose = new Vector3[21]
@@ -107,16 +109,22 @@ public class HandPoseProcessor : MonoBehaviour
     public float zTolerance  = 0.1f;
 
     [Header("UI")]
-    public Text accuracyText; // assign your UI Text here
+    public Text accuracyText; // assign in inspector
+
+    // ---- New: Per-pose accuracy tracking ----
+    private Dictionary<HandPoseType, List<float>> poseAccuracies = new Dictionary<HandPoseType, List<float>>()
+    {
+        { HandPoseType.Paper, new List<float>() },
+        { HandPoseType.Peace, new List<float>() },
+        { HandPoseType.Rock, new List<float>() }
+    };
 
     void Start()
     {
-        // wrist-relative conversion
         peacePoseRel = NormalizePoseToWrist(peacePose);
         paperPoseRel = NormalizePoseToWrist(paperPose);
         rockPoseRel  = NormalizePoseToWrist(rockPose);
 
-        // spawn reference dots
         for (int i = 0; i < 21; i++)
         {
             referenceDots[i] = Instantiate(keypointPrefab, Vector3.zero, Quaternion.identity);
@@ -125,19 +133,71 @@ public class HandPoseProcessor : MonoBehaviour
     }
 
     void Update()
+{
+    if (udpReceiver == null) return;
+
+    worldLandmarks = udpReceiver.GetCurrentHand();
+    if (worldLandmarks.Length != 21) return;
+
+    Vector3[] relativeHand = NormalizePoseToWrist(worldLandmarks);
+
+    float accuracy = DetectGesture(relativeHand);
+    UpdateReferenceDots();
+
+    // Record accuracy if a valid gesture
+    if (CurrentGesture != HandPoseType.None && accuracy >= 0)
     {
-        if (udpReceiver == null) return;
+        poseAccuracies[CurrentGesture].Add(accuracy);
 
-        worldLandmarks = udpReceiver.GetCurrentHand();
-        if (worldLandmarks.Length != 21) return;
-
-        Vector3[] relativeHand = NormalizePoseToWrist(worldLandmarks);
-
-        DetectGesture(relativeHand);
-        UpdateReferenceDots();
+        // Compute average for this pose
+        float avgPoseAccuracy = AverageList(poseAccuracies[CurrentGesture]);
+        Debug.Log($"🖐 {CurrentGesture} Avg Accuracy so far: {avgPoseAccuracy:F1}%");
     }
 
-    void DetectGesture(Vector3[] relativeHand)
+    // Increment timer
+    timeSinceLastSend += Time.deltaTime;
+    if (timeSinceLastSend >= sendInterval)
+    {
+        SendSupabaseData();
+        timeSinceLastSend = 0f;
+    }
+}
+
+// --- Method to send averages to Supabase ---
+private void SendSupabaseData()
+{
+    // Only send if we have at least 1 reading for each pose
+    if (poseAccuracies[HandPoseType.Paper].Count > 0 &&
+        poseAccuracies[HandPoseType.Peace].Count > 0 &&
+        poseAccuracies[HandPoseType.Rock].Count > 0)
+    {
+        float paperAvg = AverageList(poseAccuracies[HandPoseType.Paper]);
+        float peaceAvg = AverageList(poseAccuracies[HandPoseType.Peace]);
+        float rockAvg  = AverageList(poseAccuracies[HandPoseType.Rock]);
+        float overallAvg = (paperAvg + peaceAvg + rockAvg) / 3f;
+
+        Debug.Log($"📊 Sending to Supabase: Paper={paperAvg:F1}, Peace={peaceAvg:F1}, Rock={rockAvg:F1}, Overall={overallAvg:F1}");
+
+        SupabaseSender supabaseSender = FindObjectOfType<SupabaseSender>();
+        if (supabaseSender != null)
+        {
+            supabaseSender.SendAccuracyData(peaceAvg, paperAvg, rockAvg, overallAvg);
+        }
+        else
+        {
+            Debug.LogWarning("SupabaseSender not found!");
+        }
+    }
+}
+
+    float AverageList(List<float> list)
+    {
+        float sum = 0f;
+        foreach (float f in list) sum += f;
+        return sum / list.Count;
+    }
+
+    float DetectGesture(Vector3[] relativeHand)
     {
         bool index  = IsFingerExtended(5, 6, 7, 8);
         bool middle = IsFingerExtended(9, 10, 11, 12);
@@ -149,7 +209,6 @@ public class HandPoseProcessor : MonoBehaviour
         else if (index && !middle && !ring && pinky) CurrentGesture = HandPoseType.Rock;
         else CurrentGesture = HandPoseType.None;
 
-        // Calculate weighted accuracy
         float accuracy = 0f;
         if (CurrentGesture != HandPoseType.None)
         {
@@ -160,19 +219,19 @@ public class HandPoseProcessor : MonoBehaviour
                 HandPoseType.Rock  => rockPoseRel,
                 _ => null
             };
-
             accuracy = CalculateAccuracyWeighted(relativeHand, referencePose, xyTolerance, zTolerance);
         }
 
-        // ✅ Update UI
+        // Update UI
         if (accuracyText != null)
         {
             accuracyText.text = $"Accuracy: {accuracy:F1}%";
-
             if (accuracy >= 80f) accuracyText.color = Color.green;
             else if (accuracy >= 60f) accuracyText.color = Color.yellow;
             else accuracyText.color = Color.red;
         }
+
+        return accuracy;
     }
 
     void UpdateReferenceDots()
