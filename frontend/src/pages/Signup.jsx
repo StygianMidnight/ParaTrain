@@ -1,14 +1,19 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
+import { setPendingBiodata } from "../utils/biodataStorage";
 
 export default function Signup() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isDoctor = searchParams.get("doctor") === "1";
   const [name, setName] = useState("");
   const [gmail, setGmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -17,18 +22,21 @@ export default function Signup() {
       setMessage("Passwords do not match.");
       return;
     }
-    // Placeholder for backend OTP flow
-    setMessage("OTP flow will be connected when backend is ready. You can log in with 12345 / 12345 for now.");
+    if (!isDoctor) setPendingBiodata();
+    setSignupSuccess(true);
+    setMessage(isDoctor
+      ? "OTP flow will be connected when backend is ready. You can log in with ABC / ABC for now."
+      : "Account created. When you log in, you'll be asked to complete your health profile.");
   };
 
   return (
     <AuthLayout showNav={true}>
       <div className="w-full max-w-md flex flex-col">
-        <div className="relative bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-          <div className="h-1.5 bg-gradient-to-r from-para-teal via-para-teal-light to-para-teal" />
+        <div className="relative bg-white rounded-2xl shadow-2xl shadow-gray-200/50 border border-gray-100 overflow-hidden animate-scaleIn">
+          <div className="h-1.5 bg-gradient-to-r from-para-teal via-para-teal-light to-para-navy" />
           <div className="p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">
-            Create a New Account
+            {isDoctor ? "Create Doctor Account" : "Create a New Account"}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
@@ -71,16 +79,28 @@ export default function Signup() {
                 {message}
               </p>
             )}
-            <button
-              type="submit"
-              className="w-full py-3 rounded-lg bg-para-teal text-white font-semibold hover:bg-para-teal-dark transition"
-            >
-              Send OTP
-            </button>
+            {signupSuccess ? (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(isDoctor ? "/login/doctor" : "/login")}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-para-teal to-para-teal-dark text-white font-semibold hover:from-para-teal-dark hover:to-para-navy transition-all duration-200 shadow-lg"
+                >
+                  Go to login
+                </button>
+              </div>
+            ) : (
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-para-teal to-para-teal-dark text-white font-semibold hover:from-para-teal-dark hover:to-para-navy transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]"
+              >
+                Send OTP
+              </button>
+            )}
           </form>
           <p className="text-gray-600 mt-5 text-sm">
             Already have an account?{" "}
-            <Link to="/login" className="text-para-teal font-medium underline">
+            <Link to={isDoctor ? "/login/doctor" : "/login"} className="text-para-teal font-medium underline">
               Login here
             </Link>
           </p>

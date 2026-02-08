@@ -25,6 +25,7 @@ import Doctor from "./pages/Doctor";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Support from "./pages/Support";
+import Biodata from "./pages/Biodata";
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
           {/* AUTH ROUTES (no sidebar) */}
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/login/doctor" element={<Login doctor />} />
           <Route path="/signup" element={<Signup />} />
 
           {/* PROTECTED DASHBOARD ROUTES */}
@@ -144,6 +146,16 @@ export default function App() {
               <ProtectedRoute>
                 <Layout>
                   <Reports />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/biodata"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Biodata />
                 </Layout>
               </ProtectedRoute>
             }
